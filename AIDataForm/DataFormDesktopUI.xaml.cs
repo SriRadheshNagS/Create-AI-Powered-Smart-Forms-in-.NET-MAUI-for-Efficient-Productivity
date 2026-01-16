@@ -1,21 +1,30 @@
-namespace AIDataForm;
+using Microsoft.Maui.Controls;
+using System;
+using Syncfusion.Maui.Core;
 
-public partial class DataFormDesktopUI : ContentView
+namespace AIDataForm
 {
-	public DataFormDesktopUI()
-	{
-        InitializeComponent();
-    }
-
-    private void TapGestureRecognizer_Tapped(object sender, TappedEventArgs e)
+    public partial class DataFormDesktopUI : ContentView
     {
-        var templateItem = (sender as Border)?.BindingContext as TemplateItem;
-        var bindingContext = this.ParentGrid.BindingContext as DataFormGeneratorModel;
-
-        if (templateItem != null && bindingContext != null)
+        public DataFormDesktopUI()
         {
-            entry.Text = templateItem.Description;
-            bindingContext.FormTitle = templateItem.Title;
+            InitializeComponent();
+        }
+
+        /// <summary>
+        /// Handles the Tapped event of the TapGestureRecognizer control.
+        /// </summary>
+        /// <param name="sender">The sender object.</param>
+        /// <param name="e">The tapped event args.</param>
+        private void TapGestureRecognizer_Tapped(object sender, TappedEventArgs e)
+        {
+            var templateItem = (sender as Border)?.BindingContext as TemplateItem;
+            var bindingContext = this.ParentGrid.BindingContext as DataFormGeneratorModel;
+            if (templateItem != null && bindingContext != null)
+            {
+                entry.Text = templateItem.Description;
+                bindingContext.FormTitle = templateItem.Title;
+            }
         }
     }
 }

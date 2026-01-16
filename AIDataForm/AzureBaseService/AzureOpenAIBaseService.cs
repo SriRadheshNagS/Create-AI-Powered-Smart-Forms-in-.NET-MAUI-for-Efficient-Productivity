@@ -1,6 +1,9 @@
-﻿using Microsoft.Extensions.AI;
-using Azure.AI.OpenAI;
+﻿using System;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.Extensions.AI;
 using Azure;
+using Azure.AI.OpenAI;
 
 namespace AIDataForm
 {
@@ -27,109 +30,80 @@ namespace AIDataForm
         /// The OpenAI
         /// </summary>
         private IChatClient? client;
+        private bool isAlreadyValidated;
 
-        /// <summary>
-        /// The already credential validated field
-        /// </summary>
-        private bool isAlreadyValidated = false;
-
-        /// <summary>
-        /// The chat history
-        /// </summary>
-        private string? chatHistory;
-
-        #endregion
+        internal bool IsCredentialValid { get; private set; }
 
         internal AzureOpenAIBaseService()
         {
-            ValidateCredential();
         }
 
-        #region Properties
-
-        /// <summary>
-        /// Gets or Set a value indicating whether an credentials are valid or not.
-        /// Returns <c>true</c> if the credentials are valid; otherwise, <c>false</c>.
-        /// </summary>
-        internal bool IsCredentialValid { get; set; }
-
-        #endregion
-
-        #region Methods
-
-        /// <summary>
-        /// Validate Azure Credentials
-        /// </summary>
-        private async void ValidateCredential()
+        internal async Task InitializeAsync()
         {
-            #region Azure OpenAI
-            // Use below method for Azure Open AI
-            this.GetAzureOpenAIKernal();
-            #endregion
-
-
-            if (isAlreadyValidated)
-            {
-                return;
-            }
+            if (isAlreadyValidated) return;
 
             try
             {
-                if (client != null)
-                {
-                    await client!.CompleteAsync("Hello, Test Check");
-                    chatHistory = string.Empty;
-                    IsCredentialValid = true;
-                    isAlreadyValidated = true;
-                }
+                var azureClient = new AzureOpenAIClient(new Uri(endpoint), new AzureKeyCredential(key));
+                client = azureClient.AsChatClient(modelId: deploymentName);
+
+                var completion = await client.CompleteAsync("Hello");
+                string text = ExtractText(completion);
+
+                IsCredentialValid = !string.IsNullOrWhiteSpace(text);
+                isAlreadyValidated = IsCredentialValid;
             }
-            catch (Exception)
+            catch
             {
-                return;
+                IsCredentialValid = false;
+                isAlreadyValidated = false;
             }
         }
 
-        /// <summary>
-        /// To get the Azure OpenAI method
-        /// </summary>
-        private void GetAzureOpenAIKernal()
-        {
-            try
-            {
-                var client = new AzureOpenAIClient(new Uri(endpoint), new AzureKeyCredential(key)).AsChatClient(modelId: deploymentName);
-                this.client = client;
-            }
-            catch (Exception)
-            {
-            }
-        }
-
-        /// <summary>
-        /// Gets the AI response.
-        /// </summary>
-        /// <param name="userPrompt">The prompt.</param>
-        /// <returns>The AI response.</returns>
         internal async Task<string> GetAIResponse(string userPrompt)
         {
-            if (IsCredentialValid && client != null)
+            if (!IsCredentialValid || client == null) return string.Empty;
+
+            try
             {
-                chatHistory = string.Empty;
-                // Add the system message and user message to the options
-                chatHistory = chatHistory + "You are a predictive analytics assistant.";
-                chatHistory = chatHistory + userPrompt;
-                try
-                {
-                    var response = await client.CompleteAsync(chatHistory);
-                    return response.ToString();
-                }
-                catch
-                {
-                    return string.Empty;
-                }
+                var completion = await client.CompleteAsync(userPrompt);
+                return Normalize(ExtractText(completion));
             }
-            return string.Empty;
+            catch
+            {
+                return string.Empty;
+            }
         }
 
-        #endregion
+        private static string ExtractText(ChatCompletion? completion)
+        {
+            if (completion == null) return string.Empty;
+
+            var msg = completion.Message;
+            if (msg != null)
+            {
+                if (!string.IsNullOrWhiteSpace(msg.Text))
+                    return msg.Text;
+
+                if (msg.Contents != null)
+                {
+                    var textParts = msg.Contents
+                        .OfType<TextContent>()
+                        .Select(c => c.Text)
+                        .Where(t => !string.IsNullOrWhiteSpace(t));
+                    var combined = string.Join("", textParts);
+                    if (!string.IsNullOrWhiteSpace(combined))
+                        return combined;
+                }
+            }
+
+            return completion.ToString() ?? string.Empty;
+        }
+
+        private static string Normalize(string? text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return string.Empty;
+            return text.Trim().Trim('"').Trim();
+        }
     }
 }
