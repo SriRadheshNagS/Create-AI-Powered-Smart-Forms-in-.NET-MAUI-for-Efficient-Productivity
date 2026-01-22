@@ -1,14 +1,20 @@
-using Microsoft.Maui.Controls;
-using System;
-using Syncfusion.Maui.Core;
-
 namespace AIDataForm
 {
+    using System;
+    using Microsoft.Maui.Controls;
+    using Syncfusion.Maui.Core;
+
+    /// <summary>
+    /// Interaction logic for DataFormDesktopUI.xaml.
+    /// </summary>
     public partial class DataFormDesktopUI : ContentView
     {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DataFormDesktopUI"/> class.
+        /// </summary>
         public DataFormDesktopUI()
         {
-            InitializeComponent();
+            this.InitializeComponent();
         }
 
         /// <summary>
@@ -22,7 +28,7 @@ namespace AIDataForm
             var bindingContext = this.ParentGrid.BindingContext as DataFormGeneratorModel;
             if (templateItem != null && bindingContext != null)
             {
-                entry.Text = templateItem.Description;
+                this.entry.Text = templateItem.Description;
                 bindingContext.FormTitle = templateItem.Title;
             }
         }
